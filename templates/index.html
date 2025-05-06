@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Token Probability Visualizer</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Token Probability Visualizer</h1>
+            <p>Visualize token probabilities from OpenAI models</p>
+            <p>Wojciech Czaplejewicz © 2025</p>
+        </header>
+
+        <div class="config-panel">
+            <h2>Configuration</h2>
+            <div class="form-group">
+                <label for="model-select">Model:</label>
+                <select id="model-select">
+                    <!-- Models will be populated from API -->
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="temperature-slider">Temperature: <span id="temperature-value">0.7</span></label>
+                <input type="range" id="temperature-slider" min="0" max="2.0" step="0.05" value="0.7">
+            </div>
+            <div class="form-group">
+                <label for="top-p-slider">Top P: <span id="top-p-value">1.0</span></label>
+                <input type="range" id="top-p-slider" min="0" max="1" step="0.05" value="1.0">
+            </div>
+            <div class="form-group">
+                <label for="max-tokens-input">Max Tokens:</label>
+                <input type="number" id="max-tokens-input" min="1" max="2048" value="100">
+            </div>
+        </div>
+
+        <div class="input-section">
+            <h2>Input Prompt</h2>
+            <textarea id="prompt-input" placeholder="Enter your prompt here..."></textarea>
+            <button id="generate-btn">Generate</button>
+        </div>
+
+        <div class="output-section">
+            <h2>Generated Output</h2>
+            <div id="loading-indicator" class="hidden">Generating...</div>
+            <div id="error-message" class="hidden"></div>
+            <div id="token-visualization"></div>
+        </div>
+
+        <div class="legend">
+            <h3>Probability Legend</h3>
+            <div class="legend-item">
+                <div class="color-box high-prob"></div>
+                <span>High Probability (>0.8)</span>
+            </div>
+            <div class="legend-item">
+                <div class="color-box medium-high-prob"></div>
+                <span>Medium-High Probability (0.6-0.8)</span>
+            </div>
+            <div class="legend-item">
+                <div class="color-box medium-prob"></div>
+                <span>Medium Probability (0.4-0.6)</span>
+            </div>
+            <div class="legend-item">
+                <div class="color-box medium-low-prob"></div>
+                <span>Medium-Low Probability (0.2-0.4)</span>
+            </div>
+            <div class="legend-item">
+                <div class="color-box low-prob"></div>
+                <span>Low Probability (<0.2)</span>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <p>Token Probability Visualizer - Powered by OpenAI API</p>
+    </footer>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/visualizer.js') }}"></script>
+</body>
+</html>
