@@ -14,15 +14,19 @@ const generateBtn = document.getElementById('generate-btn');
 const loadingIndicator = document.getElementById('loading-indicator');
 const errorMessage = document.getElementById('error-message');
 const tokenVisualization = document.getElementById('token-visualization');
+const serviceTypeSelect = document.getElementById('service-type-select');
 
 // Application state
-let config = {
-    defaultModel: 'gpt-3.5-turbo-instruct',
-    defaultTemperature: 0.7,
-    defaultTopP: 1.0,
-    defaultMaxTokens: 100,
-    availableModels: []
+let appConfig = {
+    default_model: 'gpt-3.5-turbo-instruct',
+    default_temperature: 0.8,
+    default_top_p: 1.0,
+    default_max_tokens: 10,
+    startup_service_type: 'openai',
+    azure_openai_endpoint: null
 };
+let currentModels = [];
+let currentDefaultModel = '';
 
 // Initialize the application
 async function initializeApp() {
@@ -32,58 +36,96 @@ async function initializeApp() {
         if (!configResponse.ok) {
             throw new Error('Failed to load application configuration');
         }
-        
-        config = await configResponse.json();
-        
-        // Set default values
-        temperatureSlider.value = config.default_temperature;
-        temperatureValue.textContent = config.default_temperature;
-        
-        topPSlider.value = config.default_top_p;
-        topPValue.textContent = config.default_top_p;
-        
-        maxTokensInput.value = config.default_max_tokens;
-        
-        // Fetch available models
-        const modelsResponse = await fetch('/api/models');
-        if (!modelsResponse.ok) {
-            throw new Error('Failed to load available models');
+        appConfig = await configResponse.json();
+
+        // Set UI defaults from fetched appConfig
+        temperatureSlider.value = appConfig.default_temperature;
+        temperatureValue.textContent = appConfig.default_temperature;
+        topPSlider.value = appConfig.default_top_p;
+        topPValue.textContent = appConfig.default_top_p;
+        maxTokensInput.value = appConfig.default_max_tokens;
+
+        // Configure Service Type Selector
+        serviceTypeSelect.value = appConfig.startup_service_type;
+        const azureOption = serviceTypeSelect.querySelector('option[value="azure"]');
+        if (azureOption && (!appConfig.azure_openai_endpoint || appConfig.azure_openai_endpoint.trim() === '')) {
+            azureOption.disabled = true;
+            if (serviceTypeSelect.value === 'azure') {
+                serviceTypeSelect.value = 'openai';
+                showError('Azure OpenAI is not configured on the backend. Falling back to standard OpenAI.');
+            }
         }
         
-        const modelsData = await modelsResponse.json();
-        
-        // Populate model select dropdown
-        populateModelSelect(modelsData.models || config.available_models);
-        
+        // Add event listener for service type change
+        serviceTypeSelect.addEventListener('change', async (event) => {
+            const selectedService = event.target.value;
+            await loadModelsForService(selectedService);
+        });
+
+        // Initial load of models for the selected/default service type
+        await loadModelsForService(serviceTypeSelect.value);
+
     } catch (error) {
         showError(error.message);
         console.error('Initialization error:', error);
     }
 }
 
+// Load models based on service type
+async function loadModelsForService(serviceType) {
+    console.log(`Loading models for service: ${serviceType}`);
+    modelSelect.disabled = true;
+    modelSelect.innerHTML = '<option>Loading models...</option>';
+
+    try {
+        const modelsResponse = await fetch(`/api/models?service_type=${serviceType}`);
+        if (!modelsResponse.ok) {
+            const errorData = await modelsResponse.json();
+            throw new Error(errorData.error || `Failed to load models for ${serviceType}`);
+        }
+        const modelsData = await modelsResponse.json();
+        currentModels = modelsData.models || [];
+        currentDefaultModel = modelsData.default_model || (serviceType === 'azure' ? 'gpt-35-turbo' : appConfig.default_model);
+        
+        populateModelSelect(currentModels, currentDefaultModel);
+
+    } catch (error) {
+        showError(`Error loading models: ${error.message}`);
+        console.error('Model loading error:', error);
+        modelSelect.innerHTML = '<option>Error loading</option>';
+    } finally {
+        modelSelect.disabled = false;
+    }
+}
+
 // Populate model select dropdown
-function populateModelSelect(models) {
-    // Clear existing options
+function populateModelSelect(models, defaultModelToSelect) {
     modelSelect.innerHTML = '';
-    
-    // Add models to select dropdown
+
+    if (!models || models.length === 0) {
+        const option = document.createElement('option');
+        option.value = "";
+        option.textContent = "No models available";
+        modelSelect.appendChild(option);
+        modelSelect.disabled = true;
+        return;
+    }
+    modelSelect.disabled = false;
+
     models.forEach(model => {
         const option = document.createElement('option');
         option.value = typeof model === 'string' ? model : model.id;
         option.textContent = typeof model === 'string' ? model : model.name;
-        
-        // Set default model as selected
-        if (option.value === config.default_model) {
+        if (option.value === defaultModelToSelect) {
             option.selected = true;
         }
-        
         modelSelect.appendChild(option);
     });
 }
 
 // Generate text and visualize token probabilities
 async function generateText() {
-    // Get current configuration values
+    const selectedServiceType = serviceTypeSelect.value;
     const model = modelSelect.value;
     const temperature = parseFloat(temperatureSlider.value);
     const topP = parseFloat(topPSlider.value);
@@ -112,7 +154,8 @@ async function generateText() {
                 model,
                 temperature,
                 top_p: topP,
-                max_tokens: maxTokens
+                max_tokens: maxTokens,
+                service_type: selectedServiceType
             })
         });
         
@@ -140,23 +183,23 @@ async function generateText() {
 
 // Initialize token tooltips
 function initializeTokenTooltips() {
-    console.log('Initializing tooltips...'); // Log start
+    console.log('Initializing tooltips...');
     const tokens = document.querySelectorAll('.token');
-    console.log(`Found ${tokens.length} token elements.`); // Log count
+    console.log(`Found ${tokens.length} token elements.`);
     
     tokens.forEach((token, index) => {
-        console.log(`Processing token ${index + 1}`); // Log each token
+        console.log(`Processing token ${index + 1}`);
         try {
             // Get tooltip data from data attribute (as JSON)
             const tooltipJSON = token.getAttribute('data-tooltip');
-            console.log('  Raw data-tooltip:', tooltipJSON); // Log raw JSON
+            console.log('  Raw data-tooltip:', tooltipJSON);
             if (!tooltipJSON) {
                 console.warn('  Token missing data-tooltip attribute.');
-                return; // Skip if attribute is missing
+                return;
             }
             
             const tooltipData = JSON.parse(tooltipJSON);
-            console.log('  Parsed tooltip data:', tooltipData); // Log parsed data
+            console.log('  Parsed tooltip data:', tooltipData);
             
             // --- Get the color class for the main token --- Needed for the tooltip text
             // We need to retrieve it from the parent token's class list
@@ -205,19 +248,19 @@ function initializeTokenTooltips() {
             }
             
             tooltip.innerHTML = tooltipHTML;
-            console.log('  Generated tooltip HTML:', tooltipHTML); // Log generated HTML
+            console.log('  Generated tooltip HTML:', tooltipHTML);
             
             // Add tooltip to token
             token.appendChild(tooltip);
-            console.log('  Appended tooltip element:', tooltip); // Log appended element
+            console.log('  Appended tooltip element:', tooltip);
             
             // Remove data-tooltip attribute to avoid duplication
             token.removeAttribute('data-tooltip');
         } catch (error) {
-            console.error(`Error creating tooltip for token ${index + 1}:`, error, 'Raw JSON:', tooltipJSON); // Log errors with context
+            console.error(`Error creating tooltip for token ${index + 1}:`, error, 'Raw JSON:', tooltipJSON);
         }
     });
-    console.log('Tooltip initialization finished.'); // Log end
+    console.log('Tooltip initialization finished.');
 }
 
 // Show/hide loading indicator
@@ -233,6 +276,10 @@ function showLoading(isLoading) {
 
 // Show error message
 function showError(message) {
+    const maxLength = 200; // Max length before truncation
+    if (message.length > maxLength) {
+        message = message.substring(0, maxLength - 3) + "...";
+    }
     errorMessage.textContent = message;
     errorMessage.classList.remove('hidden');
 }

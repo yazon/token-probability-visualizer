@@ -17,6 +17,13 @@
         <div class="config-panel">
             <h2>Configuration</h2>
             <div class="form-group">
+                <label for="service-type-select">Service Type:</label>
+                <select id="service-type-select">
+                    <option value="openai">OpenAI (Standard)</option>
+                    <option value="azure">Azure OpenAI</option>
+                </select>
+            </div>
+            <div class="form-group">
                 <label for="model-select">Model:</label>
                 <select id="model-select">
                     <!-- Models will be populated from API -->
