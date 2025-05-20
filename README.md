@@ -6,7 +6,10 @@ The Token Probability Visualizer is a web application that allows you to visuali
 
 ## Demo
 
-![Demo Video](static/token.mp4)
+<video width="100%" controls>
+  <source src="static/token.mp4" type="video/mp4">
+  Your browser does not support the video tag.
+</video>
 
 ## Requirements
 
