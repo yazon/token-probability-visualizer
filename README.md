@@ -4,6 +4,10 @@
 
 The Token Probability Visualizer is a web application that allows you to visualize token probabilities from OpenAI models. You can see the probability of each token in a generated response, with color-coding to indicate different probability levels. The application supports both standard OpenAI and Azure OpenAI services.
 
+## Demo
+
+![Demo Video](static/token.mp4)
+
 ## Requirements
 
 - Python 3.10+
